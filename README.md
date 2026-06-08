@@ -27,7 +27,8 @@ Courier Exchange (CX) is the UK's largest freight matching platform. Drivers spe
 - **Automated load fetching** -- headless browser navigates CX, applies filters, and surfaces matching loads as Telegram cards
 - **One-tap quoting** -- select vehicle, enter price, add notes, confirm; the bot fills and submits the CX quote form
 - **Polling mode** -- "keep searching for 2 hours" schedules recurring searches and DMs new loads as they appear
-- **Multi-tenant** -- each driver has isolated credentials and session state in Redis; sessions persist across restarts
+- **Multi-tenant** -- each driver has isolated encrypted credentials and session state; sessions persist across restarts
+- **Self-service signup** -- drivers connect their CX account via a web form; a Telegram deep-link completes the setup in one tap
 
 ---
 
@@ -85,11 +86,13 @@ CX does not offer a public API. The automation layer interacts with CX exactly a
 
 **Anti-bot resilience** -- CX uses session-based bot detection that breaks naive scraping. The browser automation layer handles cookie persistence, login recovery after session expiry, and request pacing to stay within human-equivalent usage patterns.
 
-**Multi-tenant session isolation** -- Multiple drivers use the same bot simultaneously. Credentials and session cookies are stored per chat ID in Redis, encrypted at rest. One driver's session expiring never interrupts another driver's active search.
+**Multi-tenant session isolation** -- Multiple drivers use the same bot simultaneously. Credentials and session cookies are stored per chat ID in Redis under AES-256-GCM encryption. One driver's session expiring never interrupts another driver's active search.
 
 **Stateful quote flow** -- The quote flow spans five steps across separate webhook invocations (tap Quote, pick vehicle, enter price, add notes, confirm). The running Playwright task watches Redis for each step and executes the matching browser action in sequence, while the webhook tasks co-ordinate purely through shared state.
 
 **Multi-origin searches** -- "loads from Leeds and Manchester" fans out into two search tasks, staggered 60 seconds apart so the bot never opens simultaneous CX sessions for the same driver, keeping load patterns human-equivalent.
+
+**Self-service credential handoff** -- Drivers enter CX credentials on the signup page, which encrypts them with AES-256-GCM and stores a 15-minute pending token in Redis. Clicking the Telegram deep-link sends `/start verify_<token>` to the bot, which decrypts, promotes the credentials to permanent per-chat storage, and triggers the initial login -- all without the token ever appearing in plaintext outside the encrypted Redis blob.
 
 ---
 
@@ -103,6 +106,7 @@ CX does not offer a public API. The automation layer interacts with CX exactly a
 | 🤖 Intent classification | OpenRouter / Gemini 2.5 Flash Lite |
 | 🧭 Browser automation | Playwright (proprietary -- not in this repo) |
 | 🗄️ State management | Upstash Redis |
+| 🔒 Credential storage | AES-256-GCM encrypted, per-chat in Redis |
 | 🔤 Language | TypeScript |
 
 ---
@@ -121,6 +125,9 @@ src/
 
 ## 🚀 Status
 
-Phase 1 running in production. Phase 2 (multi-tenant self-service signup) in design.
+Running in production with multi-tenant support. Drivers sign up via the website, connect their CX account in one form, and get their own isolated bot session.
+
+- **Trial mode** -- fully self-service; any CX driver can sign up. Bids are submitted as dry runs so drivers can see the full flow before going live.
+- **Pro mode** -- real bids land on CX; currently invite-only while the rate-limiting and session stability are validated at scale.
 
 **Live:** [loadlens.co.uk](https://loadlens.co.uk)
