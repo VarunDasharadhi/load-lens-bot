@@ -130,4 +130,4 @@ Running in production with multi-tenant support. Drivers sign up via the website
 - **Trial mode** -- fully self-service; any CX driver can sign up. Bids are submitted as dry runs so drivers can see the full flow before going live.
 - **Pro mode** -- real bids land on CX; currently invite-only while the rate-limiting and session stability are validated at scale.
 
-**Live:** [loadlens.co.uk](https://loadlens.co.uk)
+Waiting for enough waitlist registrations before opening public access. Waitlist open at [loadlens.co.uk](https://loadlens.co.uk).
